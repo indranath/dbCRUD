@@ -1,22 +1,38 @@
 {
-	"name":         "dbcrud",
-    "version":      "0.1.1",
-    "description":  "Create MySQL-backed REST services in seconds: smart, flexible, automated CRUD and more",
-    "keywords":     [ "CRUD", "database", "REST", "MySQL", "SQL" ],
-	"main":         "lib/dbcrud.js",
-    "homepage":     "https://github.com/johnroers/dbCRUD",
-    "author":       "John Roers <jroers@gmail.com>",
-    "contributors":
-    [
-    	{ "name":   "John Roers",       "email":   "jroers@gmail.com" }
-	],
-	"repository":
+  "name": "dbcrud",
+  "version": "0.1.2",
+  "description": "Create MySQL-backed REST services in seconds: smart, flexible, automated CRUD and more",
+  "keywords": [
+    "CRUD",
+    "database",
+    "REST",
+    "MySQL",
+    "SQL"
+  ],
+  "main": "lib/dbcrud.js",
+  "homepage": "https://github.com/johnroers/dbCRUD",
+  "author": {
+    "name": "John Roers",
+    "email": "jroers@gmail.com"
+  },
+  "contributors": [
     {
-        "type":     "git",
-        "url":      "git://github.com/johnroers/dbCRUD.git"
-    },
-    "engines":
-    {
-        "node":     "*"
+      "name": "John Roers",
+      "email": "jroers@gmail.com"
     }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/johnroers/dbCRUD.git"
+  },
+  "engines": {
+    "node": "*"
+  },
+  "readme": "# dbCRUD\r\n\r\n  Create MySQL-backed REST services in seconds: smart, flexible, automated CRUD and more\r\n\r\n  Built on [node](http://nodejs.org) and [mysql](https://github.com/felixge/node-mysql), optimized for [express](http://expressjs.com/)\r\n\r\n\r\n## Features\r\n\r\n  * __JavaScript-driven database management__\r\n    * dbCRUD creates and manages your database for you, using your JavaScript data model\r\n  * __Work with logical object trees__\r\n    * dbCRUD knows your data structure and relationships, and it saves and loads entire tree structures automatically\r\n  * __Don't think about the database for simple CRUD operations__\r\n    * save and retrieve JavaScript objects like you would with Couch or Mongo\r\n  * __Utilize the power of SQL when you need it__\r\n    * flexible query syntax for more complex logic\r\n  * __Automated Express route definitions__\r\n    * get a REST server up and running with very little code\r\n\r\n\r\n## Installation\r\n\r\n    $ npm install dbcrud\r\n\r\n----\r\n\r\n## The Quick Pitch\r\n\r\n  Using a fresh MySQL install (no databases defined), this code will create a fully-functional REST service, backed by an automatically managed, queryable, MySQL database:\r\n\r\n    var express = require('express'),\r\n        server  = express.createServer(),\r\n        client  = require('mysql').createClient({ user:'root' }),\r\n        dbcrud  = require('dbcrud').init(client, 'contacts', {\r\n            families: {\r\n                id: { name: 'id', type: 'id' },\r\n                name: { name: 'name', type: 'varchar(64)', orderBy: true },\r\n                notes: { name: 'notes', type: 'varchar(255)' }\r\n            },\r\n            people: {\r\n                id: { name: 'id', type: 'id' },\r\n                name: { name: 'name', type: 'varchar(64)', nullable: true, orderBy: true },\r\n                family: { name: 'family', type: 'families' }\r\n            }\r\n        });\r\n    dbcrud.addRoutes(server);\r\n    server.use(express.bodyParser());\r\n    server.listen(80);\r\n\r\n  With just those few lines, the local server will now respond to the following routes and update the database appropriately (as well as create it to begin with):\r\n\r\n    GET   http://localhost/people/\r\n    GET   http://localhost/people/{id}\r\n    POST  http://localhost/people/        <- does create or update automatically\r\n    GET   http://localhost/families/\r\n    GET   http://localhost/families/{id}  <- will also embed associated \"people\"\r\n    POST  http://localhost/families/      <- will also store associated \"people\"\r\n\r\n\r\n----\r\n\r\n## What dbCRUD Can Do\r\n\r\n With dbCRUD, you define your data model as a JavaScript object, such as:\r\n\r\n    var model = {\r\n        families: {\r\n            id: { name: 'id', type: 'id' },\r\n            name: { name: 'name', type: 'varchar(64)', orderBy: true },\r\n            notes: { name: 'description', type: 'varchar(255)' }\r\n        },\r\n        people: {\r\n            id: { name: 'id', type: 'id' },\r\n            name: { name: 'name', type: 'varchar(64)', nullable: true, orderBy: true },\r\n            family: { name: 'family', type: 'families' }\r\n        }\r\n    }\r\n\r\n  Then you initialize dbCRUD with a mysql client, database name, and the data model:\r\n\r\n    var client = require('mysql').createClient({ user: 'root', password: '' });\r\n    var db = require('dbcrud').init(client, 'contacts', model);\r\n\r\n  dbCRUD will create the database if it doesn't exist, create each table if it doesn't exist,\r\n  and create each column if it doesn't exist.\r\n\r\n\r\n### Simple CRUD\r\n\r\n  Now that dbCRUD knows your data model structure, it exposes simple CRUD methods:\r\n\r\n    db.fetch(db.model.families, 14, callback);\r\n    db.save(db.model.families, myFamily, callback);\r\n\r\n  The save method will do INSERT or UPDATE as appropriate, based on whether or not the object's\r\n  ID field has a value.  It is also very lenient and will only update fields defined in the\r\n  JavaScript object.  Here is a valid call that will only update the \"notes\" field of \"family\"\r\n  ID 14:\r\n\r\n    db.save(db.model.families, { id: 14, notes: 'updated notes' }, callback);\r\n\r\n\r\n### Object Trees\r\n\r\n  dbCRUD is aware of table relations, and it can fetch object trees automatically:\r\n\r\n    db.fetchTree(db.model.families, 1, callback);\r\n\r\n  which will return not only the \"family\" object requested, but will also embed an array of\r\n  \"people\" objects which have a foreign-key of that \"family\" id\r\n\r\n    db.saveTree(db.model.families, myFamily, callback);\r\n\r\n  will save not only the \"family\" object, but its child \"people\" objects as well, if they are\r\n  present in an embedded array\r\n\r\n\r\n### Query Syntax\r\n\r\n  dbCRUD also exposes a more powerful query syntax for returning lists of objects:\r\n\r\n    db.select({\r\n        from: db.model.people,\r\n        where: { field: db.model.people.name, equals: 'John' },\r\n        orderBy: db.model.people.name,\r\n        success: callback\r\n    });\r\n\r\n\r\n### Using Express\r\n\r\n  In all the above examples, the \"callback\" method simply takes one parameter: the object or array\r\n  returned from the database.\r\n\r\n  If you are using Express, you can pass the response object instead of a callback method, and\r\n  dbCRUD will automatically send the data it retrieves as the response.  This allows you to create\r\n  one-line REST routes:\r\n\r\n    app.get('/family/:id', function(request, response)\r\n    {\r\n        db.fetchTree(db.model.family, request.params.id, response);\r\n    });\r\n\r\n  In fact, if you only want these simple routes defined for your objects (POST new/update, GET list,\r\n  GET by id), dbCRUD can automatically generate them for you as well:\r\n\r\n    db.addRoutes(app);\r\n\r\n----\r\n\r\n## To Do\r\n\r\n  Deleting is half-baked at the moment.  When you issue a save on any object, if \"_destroy\" is defined\r\n  and true in that object, dbCRUD will DELETE it.  That's currently the only way to delete, and it\r\n  works well enough.  But clearly some devoted methods are in order.\r\n\r\n  The \"select\" syntax is very limited and has much room to expand.\r\n\r\n  Tree fetch/save is only one level deep, and it might be worthwhile to allow deeper nesting.\r\n\r\n----\r\n\r\n## License \r\n\r\nThe MIT License (MIT)\r\n\r\nCopyright (c) 2012 John Roers\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\r\n\r\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\r\n\r\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
+  "readmeFilename": "Readme.md",
+  "bugs": {
+    "url": "https://github.com/johnroers/dbCRUD/issues"
+  },
+  "_id": "dbcrud@0.1.2",
+  "_from": "dbcrud@"
 }
